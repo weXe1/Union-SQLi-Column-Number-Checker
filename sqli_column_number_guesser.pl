@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 #   Author: <wexe1@protonmail.com>
 #   License: MIT
@@ -32,19 +32,19 @@ GetOptions(
 
 &help() if $help;
 
-die "You must specify the target url" unless $targetURL;
-die "You must specify the HTTP parameter name" unless $paramName;
+die "You must specify the target url\nuse option -h for help\n" unless $targetURL;
+die "You must specify the HTTP parameter name\nuse option -h for help\n" unless $paramName;
 
 unless ($method) {
     $method = 'GET';
 } else {
-    die "Method must be GET or POST" unless $method =~ /GET|POST/i;
+    die "Method must be GET or POST\n" unless $method =~ /GET|POST/i;
     $method = uc $method;
 }
 
 $maxTries = 10 unless $maxTries;
 
-die "max must be a positive value" if $maxTries < 1;
+die "max must be a positive value\n" if $maxTries < 1;
 
 our $ua = LWP::UserAgent->new(protocols_allowed => ['http', 'https']);
 $ua->ssl_opts(verify_hostname => 0, SSL_verify_mode => 0x00);
@@ -71,15 +71,17 @@ for my $i (1..$maxTries) {
     if ($result && $result != -1) {
         if ($null) {
             print "Column number: $i\n";
-            last;
+            exit;
         }
     } else {
         unless ($null) {
             print "Column number: " . --$i . "\n";
-            last;
+            exit;
         }
     }
 }
+
+print "Couldn't find column number :(\n";
 
 sub sendRequest {
     my $payload = shift;
