@@ -80,24 +80,23 @@ if ($null) {
     }
 } else {
     if ($binSearch) {
-        my @nums = (1..$maxTries + 1);
         my %previousQuery = (res => -1, num => -1);
-        my ($begin, $end) = (0, $#nums);
+        my ($begin, $end) = (1, $maxTries + 1);
         while ($begin <= $end) {
             my $middle = int(($begin + $end) / 2);
-            my $payload = &orderByVariantPayload($nums[$middle]);
+            my $payload = &orderByVariantPayload($middle);
             my $result = &sendRequest($payload);
 
             if ($previousQuery{res} != -1 && abs($middle - $previousQuery{num}) == 1) {
                 if ($result == 0 && $previousQuery{res} == 1) {
-                    $amountOfColums = $nums[$previousQuery{num}];
+                    $amountOfColums = $previousQuery{num};
                     last;
                 }
             }
 
             if ($result == 1 && ($end - $begin) == 1) {
-                if (&sendRequest(&orderByVariantPayload($nums[$middle + 1])) == 0) {
-                    $amountOfColums = $nums[$previousQuery{num}];
+                if (&sendRequest(&orderByVariantPayload($middle + 1)) == 0) {
+                    $amountOfColums = $previousQuery{num};
                     last;
                 }
             }
@@ -128,7 +127,7 @@ if ($null) {
 if ($amountOfColums) {
     say "Amount of columns: $amountOfColums";
 } else {
-    say "Couldn't find Number of columns :(";
+    say "Couldn't find the amount of columns :(";
 }
 
 sub sendRequest {
